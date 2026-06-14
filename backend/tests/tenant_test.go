@@ -18,7 +18,7 @@ func newRouterNoDB() http.Handler {
 	h := &router.Handlers{
 		Health: handler.NewHealthHandler(nil, nil),
 	}
-	return router.New(logger, h)
+	return router.New(logger, nil, h)
 }
 
 func TestTenantRouteRequiresTenant(t *testing.T) {

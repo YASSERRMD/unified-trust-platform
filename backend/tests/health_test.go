@@ -17,7 +17,7 @@ func newTestRouter() http.Handler {
 	h := &router.Handlers{
 		Health: handler.NewHealthHandler(nil, nil),
 	}
-	return router.New(logger, h)
+	return router.New(logger, nil, h)
 }
 
 func TestHealthEndpoint(t *testing.T) {

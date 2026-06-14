@@ -12,10 +12,16 @@ import (
 	"github.com/YASSERRMD/unified-trust-platform/backend/internal/http/router"
 )
 
-func TestHealthEndpoint(t *testing.T) {
+func newTestRouter() http.Handler {
 	logger, _ := zap.NewDevelopment()
-	h := handler.NewHealthHandler(nil, nil)
-	r := router.New(logger, h)
+	h := &router.Handlers{
+		Health: handler.NewHealthHandler(nil, nil),
+	}
+	return router.New(logger, h)
+}
+
+func TestHealthEndpoint(t *testing.T) {
+	r := newTestRouter()
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	rr := httptest.NewRecorder()
@@ -34,16 +40,13 @@ func TestHealthEndpoint(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected data field, got %v", resp)
 	}
-
 	if data["status"] != "ok" {
 		t.Errorf("expected status=ok, got %v", data["status"])
 	}
 }
 
 func TestMetaEndpoint(t *testing.T) {
-	logger, _ := zap.NewDevelopment()
-	h := handler.NewHealthHandler(nil, nil)
-	r := router.New(logger, h)
+	r := newTestRouter()
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/meta", nil)
 	rr := httptest.NewRecorder()
@@ -62,16 +65,13 @@ func TestMetaEndpoint(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected data field")
 	}
-
 	if data["version"] == nil {
 		t.Error("expected version field")
 	}
 }
 
 func TestNotFoundReturnsStandardError(t *testing.T) {
-	logger, _ := zap.NewDevelopment()
-	h := handler.NewHealthHandler(nil, nil)
-	r := router.New(logger, h)
+	r := newTestRouter()
 
 	req := httptest.NewRequest(http.MethodGet, "/does-not-exist", nil)
 	rr := httptest.NewRecorder()
@@ -85,16 +85,13 @@ func TestNotFoundReturnsStandardError(t *testing.T) {
 	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
-
 	if resp["error"] == nil {
 		t.Error("expected error field in 404 response")
 	}
 }
 
 func TestRequestIDHeader(t *testing.T) {
-	logger, _ := zap.NewDevelopment()
-	h := handler.NewHealthHandler(nil, nil)
-	r := router.New(logger, h)
+	r := newTestRouter()
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	rr := httptest.NewRecorder()

@@ -7,13 +7,12 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"go.uber.org/zap"
 
 	"github.com/YASSERRMD/unified-trust-platform/backend/internal/config"
 	"github.com/YASSERRMD/unified-trust-platform/backend/internal/database"
-	handler "github.com/YASSERRMD/unified-trust-platform/backend/internal/http/handler"
+	"github.com/YASSERRMD/unified-trust-platform/backend/internal/http/handler"
 	"github.com/YASSERRMD/unified-trust-platform/backend/internal/http/router"
 	"github.com/redis/go-redis/v9"
 )
@@ -49,7 +48,7 @@ func main() {
 	}
 
 	healthHandler := handler.NewHealthHandler(db, rdb)
-	h := router.New(healthHandler)
+	h := router.New(logger, healthHandler)
 
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 	srv := &http.Server{
@@ -86,5 +85,4 @@ func main() {
 	}
 
 	logger.Info("server stopped")
-	_ = time.Second
 }

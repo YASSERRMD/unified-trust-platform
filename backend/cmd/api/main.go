@@ -15,6 +15,7 @@ import (
 	delegpkg "github.com/YASSERRMD/unified-trust-platform/backend/internal/delegation"
 	"github.com/YASSERRMD/unified-trust-platform/backend/internal/http/handler"
 	"github.com/YASSERRMD/unified-trust-platform/backend/internal/http/router"
+	jitpkg "github.com/YASSERRMD/unified-trust-platform/backend/internal/jit"
 	mfapkg "github.com/YASSERRMD/unified-trust-platform/backend/internal/mfa"
 	policypkg "github.com/YASSERRMD/unified-trust-platform/backend/internal/policy"
 	tenantpkg "github.com/YASSERRMD/unified-trust-platform/backend/internal/tenant"
@@ -70,6 +71,7 @@ func main() {
 		handlers.Policy = policypkg.NewPolicyHandler(engine)
 
 		handlers.Delegation = delegpkg.NewHandler(delegpkg.NewService(db))
+		handlers.JIT = jitpkg.NewHandler(jitpkg.NewService(db))
 	}
 
 	h := router.New(logger, handlers)

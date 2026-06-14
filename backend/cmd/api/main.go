@@ -78,7 +78,7 @@ func main() {
 		handlers.Audit = auditpkg.NewHandler(auditpkg.NewService(db))
 	}
 
-	h := router.New(logger, handlers)
+	h := router.New(logger, rdb, handlers)
 
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 	srv := &http.Server{

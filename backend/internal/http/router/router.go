@@ -2,9 +2,11 @@ package router
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 
 	auditpkg "github.com/YASSERRMD/unified-trust-platform/backend/internal/audit"
@@ -35,15 +37,18 @@ type Handlers struct {
 	Audit      *auditpkg.Handler
 }
 
-func New(logger *zap.Logger, h *Handlers) http.Handler {
+func New(logger *zap.Logger, rdb *redis.Client, h *Handlers) http.Handler {
 	r := chi.NewRouter()
 
 	r.Use(chimiddleware.Recoverer)
 	r.Use(chimiddleware.RealIP)
+	r.Use(middleware.SecurityHeaders)
+	r.Use(middleware.CORS)
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger(logger))
 	r.Use(middleware.TenantContext)
 	r.Use(chimiddleware.StripSlashes)
+	r.Use(middleware.RateLimiter(rdb, 300, time.Minute))
 
 	r.NotFound(func(w http.ResponseWriter, req *http.Request) {
 		response.NotFound(w, req)
@@ -60,7 +65,11 @@ func New(logger *zap.Logger, h *Handlers) http.Handler {
 		r.Get("/.well-known/openid-configuration", h.OAuth.Discovery)
 		r.Get("/.well-known/jwks.json", h.OAuth.JWKS)
 		r.Get("/oauth2/authorize", h.OAuth.Authorize)
-		r.Post("/oauth2/token", h.OAuth.Token)
+		// Tighter rate limit + brute force protection on token endpoint
+		r.With(
+			middleware.RateLimiter(rdb, 20, time.Minute),
+			middleware.BruteForceProtect(rdb),
+		).Post("/oauth2/token", h.OAuth.Token)
 		r.Post("/oauth2/revoke", h.OAuth.Revoke)
 		r.Get("/oauth2/userinfo", h.OAuth.UserInfo)
 		r.Post("/oauth2/logout", h.OAuth.Logout)

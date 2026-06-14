@@ -1,0 +1,390 @@
+openapi: "3.1.0"
+
+info:
+  title: Unified Trust Platform API
+  version: "1.0.0"
+  description: |
+    Enterprise IAM platform providing OAuth2/OIDC, MFA, RBAC+ABAC+PBAC,
+    delegation, just-in-time access, federation, and audit.
+  contact:
+    name: YASSERRMD
+    email: arafath.yasser@gmail.com
+
+servers:
+  - url: http://localhost:8080
+    description: Local development
+  - url: https://trust.example.com
+    description: Production
+
+tags:
+  - name: Health
+  - name: OAuth2
+  - name: OIDC
+  - name: Tenants
+  - name: Users
+  - name: Clients
+  - name: Roles
+  - name: Permissions
+  - name: Authorization
+  - name: Policies
+  - name: MFA
+  - name: Delegations
+  - name: JIT Access
+  - name: Federation
+  - name: Audit
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Meta:
+      type: object
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        timestamp:
+          type: string
+          format: date-time
+
+    ErrorDetail:
+      type: object
+      properties:
+        code:
+          type: string
+          example: INVALID_REQUEST
+        message:
+          type: string
+        details:
+          type: object
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          $ref: "#/components/schemas/ErrorDetail"
+        meta:
+          $ref: "#/components/schemas/Meta"
+
+    Pagination:
+      type: object
+      properties:
+        nextCursor:
+          type: string
+        hasMore:
+          type: boolean
+        total:
+          type: integer
+
+    Tenant:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        status:
+          type: string
+          enum: [active, suspended, deleted]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        status:
+          type: string
+          enum: [pending, active, suspended, locked, deleted]
+        emailVerified:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    AuthzEvaluateRequest:
+      type: object
+      required: [subject, action, resource]
+      properties:
+        subject:
+          type: object
+          properties:
+            userId:
+              type: string
+            attributes:
+              type: object
+        action:
+          type: string
+          example: iam:user:read
+        resource:
+          type: object
+          properties:
+            type:
+              type: string
+            id:
+              type: string
+            attributes:
+              type: object
+        context:
+          type: object
+          properties:
+            ipAddress:
+              type: string
+            networkZone:
+              type: string
+
+    AuthzDecision:
+      type: object
+      properties:
+        allowed:
+          type: boolean
+        decision:
+          type: string
+          enum: [permit, deny]
+        reason:
+          type: string
+        matchedPolicies:
+          type: array
+          items:
+            type: string
+        evaluationMs:
+          type: integer
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Liveness probe
+      responses:
+        "200":
+          description: Server is alive
+
+  /ready:
+    get:
+      tags: [Health]
+      summary: Readiness probe
+      responses:
+        "200":
+          description: All dependencies healthy
+        "503":
+          description: One or more dependencies unavailable
+
+  /api/v1/meta:
+    get:
+      tags: [Health]
+      summary: Platform metadata
+      responses:
+        "200":
+          description: Platform info
+
+  /.well-known/openid-configuration:
+    get:
+      tags: [OIDC]
+      summary: OIDC Discovery document
+      responses:
+        "200":
+          description: OIDC metadata
+
+  /.well-known/jwks.json:
+    get:
+      tags: [OIDC]
+      summary: JSON Web Key Set
+      responses:
+        "200":
+          description: Public keys for JWT verification
+
+  /oauth2/authorize:
+    get:
+      tags: [OAuth2]
+      summary: Authorization endpoint
+      parameters:
+        - name: response_type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [code]
+        - name: client_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: redirect_uri
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: scope
+          in: query
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+        - name: code_challenge
+          in: query
+          schema:
+            type: string
+        - name: code_challenge_method
+          in: query
+          schema:
+            type: string
+            enum: [S256]
+      responses:
+        "302":
+          description: Redirect to redirect_uri with code
+
+  /oauth2/token:
+    post:
+      tags: [OAuth2]
+      summary: Token endpoint
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                grant_type:
+                  type: string
+                code:
+                  type: string
+                redirect_uri:
+                  type: string
+                code_verifier:
+                  type: string
+                refresh_token:
+                  type: string
+      responses:
+        "200":
+          description: Token response
+
+  /api/v1/tenants:
+    get:
+      tags: [Tenants]
+      summary: List tenants
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of tenants
+    post:
+      tags: [Tenants]
+      summary: Create tenant
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, slug]
+              properties:
+                name:
+                  type: string
+                slug:
+                  type: string
+      responses:
+        "201":
+          description: Tenant created
+
+  /api/v1/users:
+    get:
+      tags: [Users]
+      summary: List users
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of users
+    post:
+      tags: [Users]
+      summary: Create user
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        "201":
+          description: User created
+
+  /api/v1/authz/evaluate:
+    post:
+      tags: [Authorization]
+      summary: Evaluate authorization decision
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthzEvaluateRequest"
+      responses:
+        "200":
+          description: Authorization decision
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthzDecision"
+
+  /api/v1/audit/events:
+    get:
+      tags: [Audit]
+      summary: List audit events
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: List of audit events

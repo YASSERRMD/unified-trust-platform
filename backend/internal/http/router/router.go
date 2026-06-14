@@ -7,6 +7,7 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"go.uber.org/zap"
 
+	delegpkg "github.com/YASSERRMD/unified-trust-platform/backend/internal/delegation"
 	"github.com/YASSERRMD/unified-trust-platform/backend/internal/http/handler"
 	"github.com/YASSERRMD/unified-trust-platform/backend/internal/http/middleware"
 	"github.com/YASSERRMD/unified-trust-platform/backend/internal/http/response"
@@ -18,13 +19,14 @@ import (
 )
 
 type Handlers struct {
-	Health *handler.HealthHandler
-	Tenant *tenantpkg.Handler
-	User   *userpkg.Handler
-	OAuth  *oauthpkg.Handler
-	MFA    *mfapkg.Handler
-	RBAC   *policypkg.RBACHandler
-	Policy *policypkg.PolicyHandler
+	Health     *handler.HealthHandler
+	Tenant     *tenantpkg.Handler
+	User       *userpkg.Handler
+	OAuth      *oauthpkg.Handler
+	MFA        *mfapkg.Handler
+	RBAC       *policypkg.RBACHandler
+	Policy     *policypkg.PolicyHandler
+	Delegation *delegpkg.Handler
 }
 
 func New(logger *zap.Logger, h *Handlers) http.Handler {
@@ -77,6 +79,9 @@ func New(logger *zap.Logger, h *Handlers) http.Handler {
 		}
 		if h.Policy != nil {
 			r.Route("/policies", h.Policy.PolicyRoutes)
+		}
+		if h.Delegation != nil {
+			r.Route("/delegations", h.Delegation.Routes)
 		}
 		r.Route("/authz", func(r chi.Router) {
 			if h.Policy != nil {

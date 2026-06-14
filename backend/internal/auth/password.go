@@ -10,11 +10,11 @@ import (
 const bcryptCost = 12
 
 type PasswordPolicy struct {
-	MinLength      int
-	RequireUpper   bool
-	RequireLower   bool
-	RequireDigit   bool
-	RequireSymbol  bool
+	MinLength     int
+	RequireUpper  bool
+	RequireLower  bool
+	RequireDigit  bool
+	RequireSymbol bool
 }
 
 var DefaultPolicy = PasswordPolicy{

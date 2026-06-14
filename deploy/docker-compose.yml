@@ -1,0 +1,89 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: utp_postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-unified_trust}
+      POSTGRES_USER: ${DB_USER:-utp}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD required}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-utp} -d ${DB_NAME:-unified_trust}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - utp_net
+
+  redis:
+    image: redis:7-alpine
+    container_name: utp_redis
+    command: >
+      sh -c "if [ -n '${REDIS_PASSWORD}' ]; then redis-server --requirepass ${REDIS_PASSWORD}; else redis-server; fi"
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - utp_net
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: utp_backend
+    environment:
+      SERVER_PORT: 8080
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-utp}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD required}
+      DB_NAME: ${DB_NAME:-unified_trust}
+      DB_SSLMODE: disable
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      JWT_ISSUER: ${JWT_ISSUER:-https://trust.local}
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - utp_net
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: utp_frontend
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080}
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      - backend
+    networks:
+      - utp_net
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  utp_net:
+    driver: bridge

@@ -14,6 +14,8 @@ import (
 	"github.com/YASSERRMD/unified-trust-platform/backend/internal/database"
 	"github.com/YASSERRMD/unified-trust-platform/backend/internal/http/handler"
 	"github.com/YASSERRMD/unified-trust-platform/backend/internal/http/router"
+	mfapkg "github.com/YASSERRMD/unified-trust-platform/backend/internal/mfa"
+	policypkg "github.com/YASSERRMD/unified-trust-platform/backend/internal/policy"
 	tenantpkg "github.com/YASSERRMD/unified-trust-platform/backend/internal/tenant"
 	userpkg "github.com/YASSERRMD/unified-trust-platform/backend/internal/user"
 	"github.com/redis/go-redis/v9"
@@ -56,6 +58,15 @@ func main() {
 	if db != nil {
 		handlers.Tenant = tenantpkg.NewHandler(tenantpkg.NewService(db))
 		handlers.User = userpkg.NewHandler(userpkg.NewService(db))
+
+		mfaSvc := mfapkg.NewService(db, cfg.JWT.Issuer)
+		handlers.MFA = mfapkg.NewHandler(mfaSvc)
+
+		rbacSvc := policypkg.NewRBACService(db)
+		handlers.RBAC = policypkg.NewRBACHandler(rbacSvc)
+
+		engine := policypkg.NewPolicyEngine(db, rbacSvc)
+		handlers.Policy = policypkg.NewPolicyHandler(engine)
 	}
 
 	h := router.New(logger, handlers)

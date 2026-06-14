@@ -10,6 +10,7 @@ import (
 	"github.com/YASSERRMD/unified-trust-platform/backend/internal/http/handler"
 	"github.com/YASSERRMD/unified-trust-platform/backend/internal/http/middleware"
 	"github.com/YASSERRMD/unified-trust-platform/backend/internal/http/response"
+	oauthpkg "github.com/YASSERRMD/unified-trust-platform/backend/internal/oauth"
 	tenantpkg "github.com/YASSERRMD/unified-trust-platform/backend/internal/tenant"
 	userpkg "github.com/YASSERRMD/unified-trust-platform/backend/internal/user"
 )
@@ -18,6 +19,7 @@ type Handlers struct {
 	Health *handler.HealthHandler
 	Tenant *tenantpkg.Handler
 	User   *userpkg.Handler
+	OAuth  *oauthpkg.Handler
 }
 
 func New(logger *zap.Logger, h *Handlers) http.Handler {
@@ -40,6 +42,16 @@ func New(logger *zap.Logger, h *Handlers) http.Handler {
 
 	r.Get("/health", h.Health.Live)
 	r.Get("/ready", h.Health.Ready)
+
+	if h.OAuth != nil {
+		r.Get("/.well-known/openid-configuration", h.OAuth.Discovery)
+		r.Get("/.well-known/jwks.json", h.OAuth.JWKS)
+		r.Get("/oauth2/authorize", h.OAuth.Authorize)
+		r.Post("/oauth2/token", h.OAuth.Token)
+		r.Post("/oauth2/revoke", h.OAuth.Revoke)
+		r.Get("/oauth2/userinfo", h.OAuth.UserInfo)
+		r.Post("/oauth2/logout", h.OAuth.Logout)
+	}
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/meta", metaHandler)

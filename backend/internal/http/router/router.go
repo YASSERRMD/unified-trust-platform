@@ -11,6 +11,7 @@ import (
 	"github.com/YASSERRMD/unified-trust-platform/backend/internal/http/handler"
 	"github.com/YASSERRMD/unified-trust-platform/backend/internal/http/middleware"
 	"github.com/YASSERRMD/unified-trust-platform/backend/internal/http/response"
+	jitpkg "github.com/YASSERRMD/unified-trust-platform/backend/internal/jit"
 	mfapkg "github.com/YASSERRMD/unified-trust-platform/backend/internal/mfa"
 	oauthpkg "github.com/YASSERRMD/unified-trust-platform/backend/internal/oauth"
 	policypkg "github.com/YASSERRMD/unified-trust-platform/backend/internal/policy"
@@ -27,6 +28,7 @@ type Handlers struct {
 	RBAC       *policypkg.RBACHandler
 	Policy     *policypkg.PolicyHandler
 	Delegation *delegpkg.Handler
+	JIT        *jitpkg.Handler
 }
 
 func New(logger *zap.Logger, h *Handlers) http.Handler {
@@ -82,6 +84,10 @@ func New(logger *zap.Logger, h *Handlers) http.Handler {
 		}
 		if h.Delegation != nil {
 			r.Route("/delegations", h.Delegation.Routes)
+		}
+		if h.JIT != nil {
+			r.Route("/jit/requests", h.JIT.Routes)
+			r.Route("/jit/grants", h.JIT.GrantRoutes)
 		}
 		r.Route("/authz", func(r chi.Router) {
 			if h.Policy != nil {

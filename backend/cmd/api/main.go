@@ -10,6 +10,7 @@ import (
 
 	"go.uber.org/zap"
 
+	auditpkg "github.com/YASSERRMD/unified-trust-platform/backend/internal/audit"
 	"github.com/YASSERRMD/unified-trust-platform/backend/internal/config"
 	"github.com/YASSERRMD/unified-trust-platform/backend/internal/database"
 	delegpkg "github.com/YASSERRMD/unified-trust-platform/backend/internal/delegation"
@@ -74,6 +75,7 @@ func main() {
 		handlers.Delegation = delegpkg.NewHandler(delegpkg.NewService(db))
 		handlers.JIT = jitpkg.NewHandler(jitpkg.NewService(db))
 		handlers.Federation = fedpkg.NewHandler(fedpkg.NewService(db))
+		handlers.Audit = auditpkg.NewHandler(auditpkg.NewService(db))
 	}
 
 	h := router.New(logger, handlers)

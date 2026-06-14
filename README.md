@@ -1,5 +1,7 @@
 # Unified Trust Platform
 
+![Unified Trust Platform](docs/assets/banner.png)
+
 A production-grade Enterprise Identity and Access Management (IAM) platform providing SSO, MFA, federation, delegation, just-in-time access, and a multi-model authorization engine (RBAC + ABAC + PBAC).
 
 ## Stack
@@ -117,6 +119,12 @@ Key endpoints:
 | `GET` | `/api/v1/audit/events/export` | Export audit log as CSV |
 
 Full reference: [docs/api-design.md](docs/api-design.md) · [docs/openapi.yaml](docs/openapi.yaml)
+
+## Architecture
+
+![System Architecture](docs/assets/architecture.png)
+
+Four-layer design: **Clients** → **Presentation** (Next.js 16) → **API Gateway** (Go 1.22 chi) → **Data Layer** (PostgreSQL 16 + Redis 7). The Authorization Engine (RBAC + ABAC + PBAC) runs deny-override evaluation inside the API gateway. External OIDC Providers are federated via the well-known discovery endpoint.
 
 ## Authorization Model
 

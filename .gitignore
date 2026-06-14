@@ -1,0 +1,24 @@
+# Backend
+backend/bin/
+backend/tmp/
+backend/keys/*.pem
+*.env
+.env
+
+# Frontend
+frontend/.next/
+frontend/node_modules/
+frontend/out/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker volumes
+deploy/volumes/

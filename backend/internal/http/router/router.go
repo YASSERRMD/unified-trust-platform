@@ -10,9 +10,17 @@ import (
 	"github.com/YASSERRMD/unified-trust-platform/backend/internal/http/handler"
 	"github.com/YASSERRMD/unified-trust-platform/backend/internal/http/middleware"
 	"github.com/YASSERRMD/unified-trust-platform/backend/internal/http/response"
+	tenantpkg "github.com/YASSERRMD/unified-trust-platform/backend/internal/tenant"
+	userpkg "github.com/YASSERRMD/unified-trust-platform/backend/internal/user"
 )
 
-func New(logger *zap.Logger, healthHandler *handler.HealthHandler) http.Handler {
+type Handlers struct {
+	Health *handler.HealthHandler
+	Tenant *tenantpkg.Handler
+	User   *userpkg.Handler
+}
+
+func New(logger *zap.Logger, h *Handlers) http.Handler {
 	r := chi.NewRouter()
 
 	r.Use(chimiddleware.Recoverer)
@@ -30,11 +38,18 @@ func New(logger *zap.Logger, healthHandler *handler.HealthHandler) http.Handler 
 		response.Error(w, req, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "method not allowed", nil)
 	})
 
-	r.Get("/health", healthHandler.Live)
-	r.Get("/ready", healthHandler.Ready)
+	r.Get("/health", h.Health.Live)
+	r.Get("/ready", h.Health.Ready)
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/meta", metaHandler)
+
+		if h.Tenant != nil {
+			r.Route("/tenants", h.Tenant.Routes)
+		}
+		if h.User != nil {
+			r.Route("/users", h.User.Routes)
+		}
 	})
 
 	return r

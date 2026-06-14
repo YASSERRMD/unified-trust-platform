@@ -14,6 +14,8 @@ import (
 	"github.com/YASSERRMD/unified-trust-platform/backend/internal/database"
 	"github.com/YASSERRMD/unified-trust-platform/backend/internal/http/handler"
 	"github.com/YASSERRMD/unified-trust-platform/backend/internal/http/router"
+	tenantpkg "github.com/YASSERRMD/unified-trust-platform/backend/internal/tenant"
+	userpkg "github.com/YASSERRMD/unified-trust-platform/backend/internal/user"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -47,8 +49,16 @@ func main() {
 		logger.Info("redis connected")
 	}
 
-	healthHandler := handler.NewHealthHandler(db, rdb)
-	h := router.New(logger, healthHandler)
+	handlers := &router.Handlers{
+		Health: handler.NewHealthHandler(db, rdb),
+	}
+
+	if db != nil {
+		handlers.Tenant = tenantpkg.NewHandler(tenantpkg.NewService(db))
+		handlers.User = userpkg.NewHandler(userpkg.NewService(db))
+	}
+
+	h := router.New(logger, handlers)
 
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 	srv := &http.Server{

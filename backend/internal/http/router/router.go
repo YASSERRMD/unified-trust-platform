@@ -8,6 +8,7 @@ import (
 	"go.uber.org/zap"
 
 	delegpkg "github.com/YASSERRMD/unified-trust-platform/backend/internal/delegation"
+	fedpkg "github.com/YASSERRMD/unified-trust-platform/backend/internal/federation"
 	"github.com/YASSERRMD/unified-trust-platform/backend/internal/http/handler"
 	"github.com/YASSERRMD/unified-trust-platform/backend/internal/http/middleware"
 	"github.com/YASSERRMD/unified-trust-platform/backend/internal/http/response"
@@ -29,6 +30,7 @@ type Handlers struct {
 	Policy     *policypkg.PolicyHandler
 	Delegation *delegpkg.Handler
 	JIT        *jitpkg.Handler
+	Federation *fedpkg.Handler
 }
 
 func New(logger *zap.Logger, h *Handlers) http.Handler {
@@ -88,6 +90,9 @@ func New(logger *zap.Logger, h *Handlers) http.Handler {
 		if h.JIT != nil {
 			r.Route("/jit/requests", h.JIT.Routes)
 			r.Route("/jit/grants", h.JIT.GrantRoutes)
+		}
+		if h.Federation != nil {
+			r.Route("/federation/providers", h.Federation.ProviderRoutes)
 		}
 		r.Route("/authz", func(r chi.Router) {
 			if h.Policy != nil {

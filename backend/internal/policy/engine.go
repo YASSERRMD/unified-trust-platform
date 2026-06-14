@@ -310,6 +310,55 @@ func evalCondition(op string, actual, expected any) bool {
 	return false
 }
 
+func (e *PolicyEngine) getPolicyByID(ctx context.Context, tenantID, id uuid.UUID) (*PolicyDocument, error) {
+	p := &PolicyDocument{TenantID: tenantID}
+	var subjectsJSON, resourcesJSON, conditionsJSON []byte
+	err := e.db.QueryRow(ctx,
+		`SELECT id, name, description, effect, priority, subjects, actions, resources, conditions, is_active
+		 FROM policies WHERE id = $1 AND tenant_id = $2`,
+		id, tenantID,
+	).Scan(&p.ID, &p.Name, &p.Description, &p.Effect, &p.Priority,
+		&subjectsJSON, &p.Actions, &resourcesJSON, &conditionsJSON, &p.IsActive)
+	if err != nil {
+		if err.Error() == "no rows in result set" {
+			return nil, nil
+		}
+		return nil, err
+	}
+	json.Unmarshal(subjectsJSON, &p.Subjects)
+	json.Unmarshal(resourcesJSON, &p.Resources)
+	json.Unmarshal(conditionsJSON, &p.Conditions)
+	return p, nil
+}
+
+func (e *PolicyEngine) updatePolicy(ctx context.Context, tenantID, id uuid.UUID,
+	name, description, effect string, priority int,
+	subjects PolicySubjects, actions []string, resources PolicyResources,
+	conditions []Condition, isActive *bool) error {
+
+	subJSON, _ := json.Marshal(subjects)
+	resJSON, _ := json.Marshal(resources)
+	conJSON, _ := json.Marshal(conditions)
+
+	active := true
+	if isActive != nil {
+		active = *isActive
+	}
+
+	_, err := e.db.Exec(ctx,
+		`UPDATE policies SET name=$1, description=$2, effect=$3, priority=$4,
+		 subjects=$5, actions=$6, resources=$7, conditions=$8, is_active=$9
+		 WHERE id=$10 AND tenant_id=$11`,
+		name, description, effect, priority, subJSON, actions, resJSON, conJSON, active, id, tenantID,
+	)
+	return err
+}
+
+func (e *PolicyEngine) deletePolicy(ctx context.Context, tenantID, id uuid.UUID) error {
+	_, err := e.db.Exec(ctx, `DELETE FROM policies WHERE id=$1 AND tenant_id=$2`, id, tenantID)
+	return err
+}
+
 // CreatePolicy stores a new policy document.
 func (e *PolicyEngine) CreatePolicy(ctx context.Context, tenantID uuid.UUID, p *PolicyDocument) error {
 	p.ID = uuid.New()

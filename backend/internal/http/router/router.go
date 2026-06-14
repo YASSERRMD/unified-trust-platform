@@ -10,7 +10,9 @@ import (
 	"github.com/YASSERRMD/unified-trust-platform/backend/internal/http/handler"
 	"github.com/YASSERRMD/unified-trust-platform/backend/internal/http/middleware"
 	"github.com/YASSERRMD/unified-trust-platform/backend/internal/http/response"
+	mfapkg "github.com/YASSERRMD/unified-trust-platform/backend/internal/mfa"
 	oauthpkg "github.com/YASSERRMD/unified-trust-platform/backend/internal/oauth"
+	policypkg "github.com/YASSERRMD/unified-trust-platform/backend/internal/policy"
 	tenantpkg "github.com/YASSERRMD/unified-trust-platform/backend/internal/tenant"
 	userpkg "github.com/YASSERRMD/unified-trust-platform/backend/internal/user"
 )
@@ -20,6 +22,9 @@ type Handlers struct {
 	Tenant *tenantpkg.Handler
 	User   *userpkg.Handler
 	OAuth  *oauthpkg.Handler
+	MFA    *mfapkg.Handler
+	RBAC   *policypkg.RBACHandler
+	Policy *policypkg.PolicyHandler
 }
 
 func New(logger *zap.Logger, h *Handlers) http.Handler {
@@ -62,6 +67,24 @@ func New(logger *zap.Logger, h *Handlers) http.Handler {
 		if h.User != nil {
 			r.Route("/users", h.User.Routes)
 		}
+		if h.MFA != nil {
+			r.Route("/mfa", h.MFA.Routes)
+		}
+		if h.RBAC != nil {
+			r.Route("/roles", h.RBAC.RoleRoutes)
+			r.Route("/permissions", h.RBAC.PermissionRoutes)
+			r.Route("/users/{userId}/roles", h.RBAC.UserRoleRoutes)
+		}
+		if h.Policy != nil {
+			r.Route("/policies", h.Policy.PolicyRoutes)
+		}
+		r.Route("/authz", func(r chi.Router) {
+			if h.Policy != nil {
+				h.Policy.EvaluateRoute(r)
+			} else if h.RBAC != nil {
+				h.RBAC.EvaluateRoute(r)
+			}
+		})
 	})
 
 	return r
